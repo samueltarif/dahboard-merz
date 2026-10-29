@@ -1,0 +1,80 @@
+/* =========================================================================
+   Design tokens — herdados do painel "Entradas e Saídas por Operação e UF".
+   Mude cores/tamanhos AQUI; o resto do CSS só usa variáveis.
+   ========================================================================= */
+:root {
+  color-scheme: light;
+  --color-fg: #1f1e1c;
+  --color-fg-muted: #6b6862;
+  --color-fg-subtle: #8f8b83;
+  --color-bg: #f7f6f3;
+  --color-panel: #ffffff;
+  --color-panel-2: #fbfaf8;
+  --color-border-line: #e3e0da;
+  --color-border-strong: #cfcac1;
+
+  --color-good: #2f7d4f;
+  --color-warn: #a86a12;
+  --color-bad: #c43d3d;
+  --color-good-bg: #e9f3ec;
+  --color-warn-bg: #f8efe0;
+  --color-bad-bg: #f8e7e6;
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+  --fs-micro: 11px;
+  --fs-caption: 12.5px;
+  --fs-body: 14.5px;
+  --fs-heading: 17px;
+  --fs-title: 30px;
+  --fs-hero: 34px;
+  --fw-medium: 600;
+
+  --gap-xs: 4px; --gap-sm: 8px; --gap-md: 14px; --gap-lg: 22px; --gap-xl: 32px;
+  --pad-sm: 8px; --pad-md: 12px; --pad-lg: 18px; --pad-xl: 24px;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --dur: .2s;
+  --ease: cubic-bezier(.23, 1, .32, 1);
+
+  --chart-axis: #a9a59d;
+  --chart-grid: #ece9e3;
+  --chart-muted: #d6d2ca;
+  --surface-popover: #ffffff;
+  --shadow-popover: 0 6px 24px rgba(31, 30, 28, .12);
+  --shadow-card: 0 1px 0 rgba(31, 30, 28, .03);
+
+  /* Séries categóricas — ordem fixa, validada (CVD ΔE ≥ 10 em pares adjacentes). */
+  --c0: #2f6fb3;  /* azul    */
+  --c1: #c46a1f;  /* laranja */
+  --c2: #8e5ea2;  /* roxo    */
+  --c3: #2a9466;  /* verde   */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-fg: #ece9e3; --color-fg-muted: #a29e96; --color-fg-subtle: #7d7972;
+    --color-bg: #1b1a18; --color-panel: #24231f; --color-panel-2: #2a2924;
+    --color-border-line: #3a3832; --color-border-strong: #4d4a43;
+    --color-good: #5fbf86; --color-warn: #e0a347; --color-bad: #e46d6d;
+    --color-good-bg: #1f2e24; --color-warn-bg: #33291a; --color-bad-bg: #352120;
+    --chart-axis: #6e6a62; --chart-grid: #33312c; --chart-muted: #4a4740;
+    --surface-popover: #2c2b26; --shadow-popover: 0 6px 24px rgba(0, 0, 0, .45);
+    --c0: #4f8fd6; --c1: #d07a2c; --c2: #a274c4; --c3: #2fa37a;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-fg: #ece9e3; --color-fg-muted: #a29e96; --color-fg-subtle: #7d7972;
+  --color-bg: #1b1a18; --color-panel: #24231f; --color-panel-2: #2a2924;
+  --color-border-line: #3a3832; --color-border-strong: #4d4a43;
+  --color-good: #5fbf86; --color-warn: #e0a347; --color-bad: #e46d6d;
+  --color-good-bg: #1f2e24; --color-warn-bg: #33291a; --color-bad-bg: #352120;
+  --chart-axis: #6e6a62; --chart-grid: #33312c; --chart-muted: #4a4740;
+  --surface-popover: #2c2b26; --shadow-popover: 0 6px 24px rgba(0, 0, 0, .45);
+  --c0: #4f8fd6; --c1: #d07a2c; --c2: #a274c4; --c3: #2fa37a;
+}

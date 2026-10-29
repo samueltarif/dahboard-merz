@@ -1,0 +1,24 @@
+# Ambiente
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+
+# Dados locais e planilhas de clientes (NUNCA versionar dados fiscais)
+data/
+*.db
+*.db-wal
+*.db-shm
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+!tests/fixtures/*.csv
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

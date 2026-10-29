@@ -1,0 +1,32 @@
+# Sobe o painel + Postgres local:   docker compose up -d --build
+# Painel em http://localhost:8000   |  Postgres em localhost:5432 (painel/painel)
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: painel
+      POSTGRES_PASSWORD: painel
+      POSTGRES_DB: painel
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U painel"]
+      interval: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://painel:painel@db:5432/painel
+      EMPRESA_LABEL: ${EMPRESA_LABEL:-Filial SP}
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
