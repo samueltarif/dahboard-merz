@@ -29,9 +29,14 @@ _load_dotenv(BASE_DIR / ".env")
 
 
 def _default_sqlite_url() -> str:
-    data_dir = BASE_DIR / "data"
-    data_dir.mkdir(exist_ok=True)
-    return f"sqlite:///{(data_dir / 'dashboard.db').as_posix()}"
+    # No Vercel só /tmp é gravável. Localmente continua usando data/.
+    base = Path("/tmp") if os.getenv("VERCEL") else BASE_DIR / "data"
+    try:
+        base.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        base = Path("/tmp")
+        base.mkdir(parents=True, exist_ok=True)
+    return f"sqlite:///{(base / 'dashboard.db').as_posix()}"
 
 
 @dataclass(frozen=True)
