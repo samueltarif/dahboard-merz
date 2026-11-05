@@ -43,6 +43,8 @@ def _default_sqlite_url() -> str:
 class Settings:
     app_name: str = "Painel Tributário"
     empresa_label: str = os.getenv("EMPRESA_LABEL", "Filial SP")
+    # UF do estabelecimento: padrão da aba "Apuração & ajustes" (apuração de ICMS é por estabelecimento).
+    uf_estabelecimento: str = os.getenv("UF_ESTABELECIMENTO", "SP").upper()[:2]
     database_url: str = os.getenv("DATABASE_URL") or _default_sqlite_url()
     database_url_is_default: bool = not os.getenv("DATABASE_URL")
 

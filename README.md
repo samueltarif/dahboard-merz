@@ -32,7 +32,7 @@ docker compose down              # para (os dados ficam no volume pgdata)
 O painel fala com o Supabase de dois jeitos. O `.env` decide qual:
 
 **A) API REST com a chave de servidor (configurado hoje)**
-1. No Supabase, abra **SQL Editor → New query**, cole o conteúdo de `supabase/migrations/0001_init.sql` e clique **Run** (uma vez só; pode repetir sem problema).
+1. No Supabase, abra **SQL Editor → New query**, cole o conteúdo de `supabase/migrations/0001_init.sql` e clique **Run**. Depois faça o mesmo com `0002_apuracao.sql` (aba Apuração & ajustes). Pode repetir sem problema.
 2. No `.env`: `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (Settings → API Keys).
 3. `python run.py` — o terminal mostra `Banco: Supabase (API) https://...`.
 
@@ -52,6 +52,7 @@ As tabelas têm RLS ligado e nenhuma política, então a chave `anon`/publishabl
 | **Produtos & parceiros** | Materiais (preço médio e carga), maiores parceiros, curva ABC de concentração, NCM |
 | **Reforma tributária** | IBS/CBS destacados em 2026 e simulação do cenário pleno com alíquotas editáveis, por CST e por material |
 | **Conformidade** | 13 regras: recálculo de ICMS/IPI/PIS/COFINS/IBS/CBS, CST × valor, DIFAL ausente, 4% de importados, exclusão do ICMS da base PIS/COFINS, chave ausente, documentos de outro mês |
+| **Apuração & ajustes** | Quadro de apuração do mês (ICMS, IPI, PIS, COFINS) com débitos/créditos do SAP + lançamentos manuais (estorno de crédito/débito, ajuste de débito/crédito) e saldo credor anterior (transportado automaticamente). Conciliação com a apuração oficial (GIA/SPED) com justificativa obrigatória para diferenças, checklist de validação, fluxo lançador → validador → leitor, histórico e Excel do mês |
 | **Dados & importações** | Lotes importados (com remoção), explorador de itens paginado |
 
 Todos os filtros (movimento, operação, documento, natureza, UF, período, lote e busca) valem para
@@ -92,11 +93,27 @@ supabase/migrations/        SQL do esquema
 | Um CFOP está na natureza errada | `app/domain/cfop.py` (tabelas `NATUREZA_*`) — vale para o histórico, sem reimportar |
 | Incluir um tributo novo | `app/domain/taxes.py` (+ coluna em `columns.py` se vier do SAP) |
 | Nova regra de conformidade | `app/services/compliance.py` (lista `CHECKS`) |
+| Novo tipo de ajuste, papel ou regra de validação do mês | `app/domain/apuracao.py` |
 | Mudar cores/fontes | `app/web/static/css/tokens.css` |
 | Nova aba | crie `static/js/views/minha-aba.js` e registre em `static/js/main.js` (`VIEWS`) |
 
 Erros: o servidor registra o traceback completo no terminal; a tela mostra a mensagem em português.
 Cada arquivo importado é processado separadamente, então um arquivo ruim não bloqueia os outros.
+
+## Apuração & ajustes: como funciona
+
+- **Mês e UF**: cada competência (AAAA-MM) da UF do estabelecimento (`UF_ESTABELECIMENTO`, padrão SP) tem seu quadro.
+  Os filtros do topo não valem nesta aba: ela usa a base SAP do mês inteiro.
+- **Lançamentos manuais**: valor sempre positivo; o tipo diz se soma a débitos (ajuste de débito, estorno de crédito)
+  ou a créditos (ajuste de crédito, estorno de débito). Descrição obrigatória.
+- **Saldo credor anterior**: transportado do mês anterior. Digitar um valor substitui; apagar volta ao automático.
+- **Conciliação**: informe o resultado da apuração oficial. Diferença acima de R$ 0,05 precisa de justificativa
+  para o mês poder ser enviado ou validado.
+- **Papéis** (sem login por enquanto, escolhidos no topo da aba e gravados no histórico):
+  lançador lança e envia; validador valida ou devolve com motivo; leitor só consulta e exporta.
+  Enviado ou validado, o mês fica travado até o validador devolver.
+- **Login no futuro**: só `get_ator` em `app/api/apuracao_routes.py` muda (passa a ler o usuário e o papel do token).
+  As regras ficam em `app/domain/apuracao.py` e `app/services/apuracao.py`.
 
 ## Testes
 ```bash
