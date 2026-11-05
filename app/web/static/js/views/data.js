@@ -14,6 +14,7 @@ const fmtDay = (s) => (s ? s.split('-').reverse().join('/') : '—');
 
 export default {
   id: 'data',
+  allowEmpty: true,
   label: 'Dados & importações',
   async render(root, ctx) {
     const [{ imports }, items] = await Promise.all([api.imports(), api.items(apiFilters(), { page: pageState.page, page_size: 50, sort: pageState.sort, desc: pageState.desc })]);

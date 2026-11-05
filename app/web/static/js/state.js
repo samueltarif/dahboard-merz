@@ -56,3 +56,15 @@ export const hasFilters = () => Object.entries(state.filters).some(([, v]) => (A
 
 /** Filtros no formato da API. */
 export const apiFilters = () => ({ ...state.filters });
+
+// Quem está usando a aba "Apuração & ajustes". Sem login por enquanto: fica salvo neste navegador.
+// Quando houver login, nome e papel passam a vir da conta e este bloco sai.
+const ATOR_KEY = 'painel-ator';
+export const ator = (() => {
+  const base = { nome: '', papel: 'lancador' };
+  try { return { ...base, ...(JSON.parse(localStorage.getItem(ATOR_KEY)) || {}) }; } catch (_) { return base; }
+})();
+export function setAtor(patch) {
+  Object.assign(ator, patch);
+  try { localStorage.setItem(ATOR_KEY, JSON.stringify(ator)); } catch (_) {}
+}

@@ -59,8 +59,8 @@ def _check(res: httpx.Response) -> httpx.Response:
         msg, code = res.text[:300], ""
     if code in ("PGRST205", "42P01") or "Could not find the table" in msg:
         raise SupabaseError(
-            "As tabelas ainda não existem no Supabase. Abra o SQL Editor do projeto e rode o arquivo "
-            "supabase/migrations/0001_init.sql (uma vez só)."
+            "Faltam tabelas no Supabase. Abra o SQL Editor do projeto e rode os arquivos de supabase/migrations "
+            "na ordem (0001_init.sql e 0002_apuracao.sql). Pode rodar de novo sem problema."
         )
     if res.status_code in (401, 403):
         raise SupabaseError(f"Supabase recusou a chave ({res.status_code}). Confira SUPABASE_SERVICE_ROLE_KEY no .env. Detalhe: {msg}")
@@ -101,6 +101,7 @@ def ensure_schema() -> None:
     try:
         _check(_client().get("/imports", params={"select": "id", "limit": "1"}))
         _check(_client().get("/fiscal_items", params={"select": "id", "limit": "1"}))
+        _check(_client().get("/apuracao_lancamentos", params={"select": "id", "limit": "1"}))
         log.info("Supabase conectado: %s", settings.supabase_url)
     except (SupabaseError, httpx.HTTPError) as exc:
         log.error("Supabase: %s", exc)
@@ -180,3 +181,37 @@ def load_items() -> pd.DataFrame:
     if not rows:
         return pd.DataFrame(columns=["id", "import_id", *[c.field for c in COLUMNS]])
     return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# Acesso genérico por tabela (mesma assinatura do sql_repo).
+# ---------------------------------------------------------------------------
+def _eq(eq: dict) -> dict[str, str]:
+    return {k: f"eq.{v}" for k, v in eq.items()}
+
+
+def _payload(values: dict) -> dict:
+    return {k: _json_value(v) for k, v in values.items()}
+
+
+def rows(table_name: str, order: str = "id", **eq) -> list[dict]:
+    return _get_all(table_name, {"select": "*", "order": f"{order},id", **_eq(eq)})
+
+
+def insert_row(table_name: str, values: dict) -> dict:
+    res = _check(_client().post(f"/{table_name}", json=_payload(values), headers={"Prefer": "return=representation"}))
+    return res.json()[0]
+
+
+def update_rows(table_name: str, values: dict, **eq) -> int:
+    if not eq:
+        raise ValueError("update sem filtro")
+    res = _check(_client().patch(f"/{table_name}", params=_eq(eq), json=_payload(values), headers={"Prefer": "return=representation"}))
+    return len(res.json())
+
+
+def delete_rows(table_name: str, **eq) -> int:
+    if not eq:
+        raise ValueError("delete sem filtro")
+    res = _check(_client().delete(f"/{table_name}", params=_eq(eq), headers={"Prefer": "return=representation"}))
+    return len(res.json())

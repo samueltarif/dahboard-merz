@@ -67,7 +67,8 @@ def meta() -> dict:
     """Opções disponíveis para os filtros."""
     df = dataset.get_dataset()
     if df.empty:
-        return {"empty": True, "empresa": settings.empresa_label, "taxes": [t.__dict__ for t in TAXES]}
+        return {"empty": True, "empresa": settings.empresa_label, "uf_estabelecimento": settings.uf_estabelecimento,
+                "taxes": [t.__dict__ for t in TAXES]}
 
     def uniq(col: str) -> list[str]:
         return sorted(v for v in df[col].dropna().astype(str).unique() if v)
@@ -76,6 +77,7 @@ def meta() -> dict:
     return {
         "empty": False,
         "empresa": settings.empresa_label,
+        "uf_estabelecimento": settings.uf_estabelecimento,
         "periodos": uniq("periodo"),
         "ufs": df.groupby("uf_op")["valor_total"].sum().sort_values(ascending=False).index.tolist(),
         "operacoes": [o for o in ("Interna", "Interestadual", "Exterior") if o in set(df["operacao"])],

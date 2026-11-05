@@ -9,10 +9,10 @@ import datetime as dt
 import math
 
 import pandas as pd
-from sqlalchemy import delete, func, insert, select
+from sqlalchemy import delete, func, insert, select, update
 
 from app.db.engine import backend_name, get_engine, init_db
-from app.db.models import fiscal_items, imports
+from app.db.models import fiscal_items, imports, metadata
 from app.domain.columns import COLUMNS, NATURAL_KEY
 from app.repositories.common import SaveResult, file_hash  # noqa: F401  (reexporta file_hash)
 
@@ -119,3 +119,40 @@ def load_items() -> pd.DataFrame:
     if not rows:
         return pd.DataFrame(columns=["id", "import_id", *[c.field for c in COLUMNS]])
     return pd.DataFrame([dict(r) for r in rows])
+
+
+# ---------------------------------------------------------------------------
+# Acesso genérico por tabela (usado pela apuração com ajustes manuais).
+# Mesma assinatura no supabase_repo: rows / insert_row / update_rows / delete_rows.
+# ---------------------------------------------------------------------------
+def _where(table, eq: dict):
+    return [table.c[k] == v for k, v in eq.items()]
+
+
+def rows(table_name: str, order: str = "id", **eq) -> list[dict]:
+    """Linhas com filtros de igualdade. `order`: "coluna" ou "coluna.desc"."""
+    table = metadata.tables[table_name]
+    col, _, direction = order.partition(".")
+    sort = table.c[col].desc() if direction == "desc" else table.c[col].asc()
+    with get_engine().connect() as conn:
+        res = conn.execute(select(table).where(*_where(table, eq)).order_by(sort, table.c.id)).mappings().all()
+    return [dict(r) for r in res]
+
+
+def insert_row(table_name: str, values: dict) -> dict:
+    table = metadata.tables[table_name]
+    with get_engine().begin() as conn:
+        new_id = conn.execute(insert(table).values(**values)).inserted_primary_key[0]
+        return dict(conn.execute(select(table).where(table.c.id == new_id)).mappings().one())
+
+
+def update_rows(table_name: str, values: dict, **eq) -> int:
+    table = metadata.tables[table_name]
+    with get_engine().begin() as conn:
+        return conn.execute(update(table).where(*_where(table, eq)).values(**values)).rowcount
+
+
+def delete_rows(table_name: str, **eq) -> int:
+    table = metadata.tables[table_name]
+    with get_engine().begin() as conn:
+        return conn.execute(delete(table).where(*_where(table, eq))).rowcount

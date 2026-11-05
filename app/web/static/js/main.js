@@ -14,8 +14,9 @@ import products from './views/products.js';
 import reform from './views/reform.js';
 import compliance from './views/compliance.js';
 import data from './views/data.js';
+import apuracao from './views/apuracao.js';
 
-const VIEWS = [overview, operations, products, reform, compliance, data];
+const VIEWS = [overview, operations, products, reform, compliance, apuracao, data];
 const $ = (id) => document.getElementById(id);
 const ctx = { openImporter: () => openImporter(afterImport), refresh: () => boot(), rerender: () => renderView() };
 
@@ -26,7 +27,9 @@ async function renderView() {
   const root = $('view');
   for (const t of $('tabs').children) t.setAttribute('aria-selected', String(t.dataset.view === view.id));
 
-  if (state.meta?.empty && view.id !== 'data') { renderEmpty(root); return; }
+  // Abas com hideFilters (ex.: apuração) usam a base do mês inteiro e ignoram os filtros do topo.
+  $('filters').hidden = !state.meta || state.meta.empty || Boolean(view.hideFilters);
+  if (state.meta?.empty && !view.allowEmpty) { renderEmpty(root); return; }
 
   const seq = ++renderSeq;
   root.classList.add('loading');
@@ -108,6 +111,7 @@ async function boot() {
 
 onChange((reason) => {
   if (reason === 'filters') { data.reset?.(); renderFilters($('filters')); }
+  if (reason === 'view') apuracao.reset?.();
   renderView();
 });
 

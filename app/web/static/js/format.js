@@ -25,3 +25,18 @@ export const FORMATS = {
   brl: (v) => brl(v), brlc: (v) => brlc(v), int: (v) => int(v), num: (v) => num(v), pct: (v) => pct(v),
   month: (v) => month(v), day: (v) => day(v), text: (v) => (v ?? '—'),
 };
+
+const dec2 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** 1234.5 -> "1.234,50" (para preencher campos) */
+export const dec = (v) => (v == null || v === '' ? '' : dec2.format(Number(v) || 0));
+/** "1.234,56" | "1234,56" | "1234.56" -> 1234.56 · "1.234" -> 1234 · vazio -> null · inválido -> NaN */
+export function parseNum(text) {
+  const t = String(text ?? '').trim().replace(/\s|R\$/g, '');
+  if (!t) return null;
+  // Padrão brasileiro: vírgula decimal; ponto como milhar ("1.234" = mil duzentos e trinta e quatro).
+  const milhar = /^-?\d{1,3}(\.\d{3})+$/.test(t);
+  const norm = t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : (milhar ? t.replace(/\./g, '') : t);
+  return /^-?\d+(\.\d+)?$/.test(norm) ? Number(norm) : NaN;
+}
+/** ISO -> "05/11/2026 16:52" */
+export const dateTime = (s) => (s ? new Date(s).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—');

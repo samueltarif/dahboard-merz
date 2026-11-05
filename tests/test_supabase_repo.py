@@ -15,7 +15,8 @@ from tests.conftest import make_workbook
 class FakePostgrest:
     """Implementa o pedaço do PostgREST que o repositório usa: select/eq/gt/order/limit/offset, insert, delete."""
 
-    def __init__(self, tables=("imports", "fiscal_items")):
+    def __init__(self, tables=("imports", "fiscal_items", "apuracao_lancamentos", "apuracao_saldos",
+                               "apuracao_competencias", "apuracao_historico")):
         self.tables = {t: [] for t in tables}
         self.seq = {t: 0 for t in tables}
         self.calls: list[tuple[str, str]] = []
@@ -43,8 +44,10 @@ class FakePostgrest:
         if request.method == "GET":
             out = self._filter(rows, params)
             q = dict(params)
-            if q.get("order", "").startswith("created_at.desc"):
-                out = sorted(out, key=lambda r: (r["created_at"], r["id"]), reverse=True)
+            order = q.get("order", "").split(",")[0]
+            if order.endswith(".desc"):
+                col = order[:-5]
+                out = sorted(out, key=lambda r: (r[col], r["id"]), reverse=True)
             off, lim = int(q.get("offset", 0)), int(q.get("limit", 10_000))
             out = out[off:off + lim]
             if q.get("select", "*") != "*":
@@ -63,6 +66,12 @@ class FakePostgrest:
                 rows.append(rec)
                 created.append(rec)
             return httpx.Response(201, json=created if "representation" in request.headers.get("prefer", "") else None)
+        if request.method == "PATCH":
+            body = json.loads(request.content)
+            hit = self._filter(rows, params)
+            for r in hit:
+                r.update(body)
+            return httpx.Response(200, json=hit if "representation" in request.headers.get("prefer", "") else [])
         if request.method == "DELETE":
             gone = self._filter(rows, params)
             self.tables[table] = [r for r in rows if r not in gone]
@@ -128,3 +137,32 @@ def test_tabela_ausente_mensagem_clara(monkeypatch):
     monkeypatch.setattr(supabase_repo, "_client", lambda: client)
     with pytest.raises(supabase_repo.SupabaseError, match="0001_init.sql"):
         supabase_repo.list_imports()
+
+
+def test_apuracao_sobre_supabase(fake, monkeypatch, sample_rows, client):
+    """Lançamentos, saldos, status e histórico pela API REST (inclui PATCH)."""
+    from app.repositories import imports_repo, store
+    from app.services import dataset
+
+    for name in ("find_by_hash", "save_import", "list_imports", "delete_import", "delete_all", "load_items"):
+        monkeypatch.setattr(imports_repo, name, getattr(supabase_repo, name))
+    for name in ("rows", "insert_row", "update_rows", "delete_rows"):
+        monkeypatch.setattr(store, name, getattr(supabase_repo, name))
+    dataset.invalidate()
+    client.post("/api/imports", files=[("files", ("a.xlsx", make_workbook(sample_rows)))])
+
+    h = {"X-Usuario": "Ana", "X-Papel": "lancador"}
+    key = {"competencia": "2026-09", "uf": "SP"}
+    lanc = client.post("/api/apuracao/lancamentos", headers=h, json={**key, "tributo": "icms", "tipo": "estorno_credito",
+                                                                       "valor": 25, "descricao": "Estorno"}).json()["lancamento"]
+    assert isinstance(lanc["id"], int)
+    client.put("/api/apuracao/saldos", headers=h, json={**key, "tributo": "icms", "valor_declarado": 85})
+    client.put("/api/apuracao/saldos", headers=h, json={**key, "tributo": "icms", "observacao": "ok"})
+    assert client.post("/api/apuracao/status", headers=h, json={**key, "acao": "enviar"}).status_code == 200
+
+    d = client.get("/api/apuracao", params=key, headers=h).json()
+    t = next(x for x in d["quadro"] if x["tributo"] == "icms")
+    assert t["resultado"] == pytest.approx(85.0) and t["situacao"] == "confere" and t["observacao"] == "ok"
+    assert d["status"]["status"] == "em_validacao"
+    assert d["historico"][0]["acao"] == "enviar"
+    assert len(fake.tables["apuracao_saldos"]) == 1                     # upsert, não duplica
